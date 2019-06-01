@@ -1,6 +1,43 @@
 import tkinter as tk
 
 
+class Mancala(tk.Tk):
+
+    def __init__(self, *args, **kwargs):
+        tk.Tk.__init__(self, *args, **kwargs)
+        container = tk.Frame(self)
+        container.pack(side="top", fill="both", expand=True)
+##        container.grid_rowconfigure(0, weight=1)
+##        container.grid_columnconfigure(0, weight=1)
+        self.title("Mancala")
+        self.geometry("400x400")
+        self.frames = {}
+        
+        for F in (MenuPage, Board):
+            page_name = F.__name__
+            frame = F(parent=container, controller=self)
+            self.frames[page_name] = frame
+
+            # put all of the pages in the same location;
+            # the one on the top of the stacking order
+            # will be the one that is visible.
+            frame.grid(row=0, column=0, sticky="nsew")
+
+        self.show_frame("MenuPage")
+
+    def show_frame(self, page_name):
+        frame = self.frames[page_name]
+        frame.tkraise()
+
+
+class MenuPage(tk.Frame):
+    #create MenuPage Frame
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        tk.Button(self, text="Start", command=lambda: controller.show_frame("Board")).pack()
+
+        
 class Hole(tk.Button):
 
     def __init__(self, board, pos, marble):
