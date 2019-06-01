@@ -3,13 +3,13 @@ import tkinter as tk
 
 class Hole(tk.Button):
 
-    def __init__(self, parent, board, pos, marble):
+    def __init__(self, board, pos, marble):
         self.board = board
         self.pos = pos
         self.marble = marble
         self.btn_text = tk.StringVar()
 
-        tk.Button.__init__(self, parent, textvariable=self.btn_text, font=('Helvetica','12'), height=2, width=4, command=lambda:self.board.onClick(self.pos))
+        tk.Button.__init__(self, board, textvariable=self.btn_text, font=('Helvetica','12'), height=2, width=4, command=lambda:self.board.onClick(self.pos))
         self.btn_text.set(self.marble)
 
     def updateMarble(self, i):
@@ -19,13 +19,12 @@ class Hole(tk.Button):
         self.after(500)
 
 
-class Board:
+class Board(tk.Frame):
 
-    def __init__(self):
-        #create Game Board window
-        self.root = tk.Tk()
-        self.root.title("Game Board")
-        self.root.geometry("400x400")
+    def __init__(self, parent, controller):
+        #create Game Board Frame
+        self.controller = controller
+        tk.Frame.__init__(self, parent)
         self.holeList = [None] * 14
 
         #create Hole Button
@@ -33,17 +32,15 @@ class Board:
         for i in range(14):
 
             if i < 7:
-                hole = Hole(self.root, self, i+j, 4)
+                hole = Hole(self, i+j, 4)
                 self.holeList[i+j] = hole
                 j -= 2
 
             else:
-                hole = Hole(self.root, self, i, 4)
+                hole = Hole(self, i, 4)
                 self.holeList[i] = hole
 
             hole.grid(padx=2, pady=2, row=i//7, column=i%7)
-
-        self.root.mainloop()
 
     def onClick(self, pos):
         #disable button click
@@ -66,7 +63,7 @@ class Board:
             n = self.holeList[pos].marble
             
         #until a Hole is empty, another player's turn
-        tk.Label(text="change player").grid(row=4,column=0,columnspan=2)
+        tk.Label(self, text="change player").grid(row=4,column=0,columnspan=2)
         for button in self.holeList:
             button.config(state=tk.NORMAL)
         
@@ -86,4 +83,7 @@ class Board:
                 self.holeList[startPos].updateMarble(j+1)
                 startPos += 1
 
-board = Board()
+
+if __name__ == "__main__":
+    app = Mancala()
+    app.mainloop()
