@@ -50,7 +50,6 @@ class Board:
             
         self.root.mainloop()
 
-
     def onClick(self, pos):
 
         n = self.holeList[pos].marble
@@ -71,7 +70,6 @@ class Board:
             n = self.holeList[pos].marble
             
         tk.Label(text="change player").grid(row=4,column=0,columnspan=2)
-        
         
     def updateBoard(self, pos):
         
