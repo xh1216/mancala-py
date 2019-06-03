@@ -18,19 +18,6 @@ class Mancala(tk.Tk):
     def show_frame(self, page_name):
         getattr(Mancala, page_name).tkraise()
 
-
-class Player:
-
-    def __init__(self, name, isBot, isTurn):
-        self.name = name
-        self.isBot = isBot
-        self.isTurn = isTurn
-        self.holes = [None] * (Mancala.MenuPage.holeNum.get()//2)
-        self.score = tk.IntVar()
-
-    def setScore(self, score):
-        self.score = score
-
         
 class MenuPage(tk.Frame):
     #create MenuPage Frame
@@ -82,6 +69,16 @@ class MenuPage(tk.Frame):
             frame.tkraise()
 
 
+class Player:
+
+    def __init__(self, name, isBot, isTurn):
+        self.name = name
+        self.isBot = isBot
+        self.isTurn = isTurn
+        self.holes = [None] * (Mancala.MenuPage.holeNum.get()//2)
+        self.score = tk.IntVar()
+
+        
 class Hole(tk.Button):
 
     def __init__(self, board, pos, seed):
@@ -164,6 +161,10 @@ class Board(tk.Frame):
         #until a Hole is empty, another player's turn
         for player in self.playerList:
             if player.isTurn:
+                nextHole = self.holeList[(pos + 1) % len(self.holeList)]
+                score = player.score.get()
+                player.score.set(score + nextHole.seed)
+                nextHole.setSeed(0)
                 player.isTurn = False
             else:
                 player.isTurn = True
@@ -171,6 +172,10 @@ class Board(tk.Frame):
                     if hole.seed != 0:
                         hole.config(state=tk.NORMAL)
                 self.msg.config(text=player.name.get() + "'sTurn!")
+                    
+        if self.checkEndGame():
+            self.winner = self.player if self.player.score.get() > self.opponent.score.get() else self.opponent
+            self.msg.config(text=self.winner.name.get() + " win!!!")
         
     def updateBoard(self, pos):
         n = self.holeList[pos].seed
@@ -181,6 +186,14 @@ class Board(tk.Frame):
             s = self.holeList[j].seed
             self.holeList[j].setSeed(s+1)
         return j
+
+    def checkEndGame(self):
+        for player in self.playerList:
+            if player.isTurn:
+                for hole in player.holes:
+                    if hole.seed != 0:
+                        return False
+        return True
 
 
 if __name__ == "__main__":
