@@ -94,7 +94,7 @@ class Hole(tk.Button):
         self.seed = i
         self.btn_text.set(self.seed)
         self.update()
-        self.after(800)
+        self.after(500)
 
         
 class Board(tk.Frame):
