@@ -13,10 +13,7 @@ class Mancala(tk.Tk):
         self.geometry("500x500")
         setattr(Mancala, MenuPage.__name__, MenuPage(container, self))
         getattr(Mancala, MenuPage.__name__).grid(row=0, column=0, sticky="nsew")
-        self.show_frame("MenuPage")
-
-    def show_frame(self, page_name):
-        getattr(Mancala, page_name).tkraise()
+        getattr(Mancala, MenuPage.__name__).tkraise()
 
         
 class MenuPage(tk.Frame):
@@ -85,14 +82,13 @@ class Hole(tk.Button):
         self.board = board
         self.pos = pos
         self.seed = seed
-        self.btn_text = tk.StringVar()
-
-        tk.Button.__init__(self, board, textvariable=self.btn_text, font=('Helvetica','12'), height=2, width=4, command=lambda:self.board.holeClicked(self.pos))
-        self.btn_text.set(self.seed)
+        self.btnText = tk.StringVar()
+        tk.Button.__init__(self, board, textvariable=self.btnText, font=('Helvetica','12'), height=2, width=4, command=lambda:self.board.holeClicked(self.pos))
+        self.btnText.set(self.seed)
 
     def setSeed(self, i):
         self.seed = i
-        self.btn_text.set(self.seed)
+        self.btnText.set(self.seed)
         self.update()
         self.after(500)
 
@@ -106,11 +102,9 @@ class Board(tk.Frame):
         self.seedNum = Mancala.MenuPage.seedNum.get()
         self.holeList = [None] * self.holeNum
         self.player = Player(Mancala.MenuPage.playerName, False, True)
-        if Mancala.MenuPage.vsRadioButton.get() == 0:
-            Mancala.MenuPage.opponentName.set("Bot")
-            self.opponent = Player(Mancala.MenuPage.opponentName, True, False)
-        else:
-            self.opponent = Player(Mancala.MenuPage.opponentName, False, False)
+        self.botName = tk.StringVar()
+        self.botName.set("Bot")
+        self.opponent = Player(self.botName, True, False) if Mancala.MenuPage.vsRadioButton.get() == 0 else Player(Mancala.MenuPage.opponentName, False, False)
         self.playerList = [self.player, self.opponent]
         
         tk.Label(self, text="Player:", font=('Helvetica','12')).grid(row=0, column=0)
@@ -121,8 +115,10 @@ class Board(tk.Frame):
         tk.Label(self, textvariable=self.opponent.name, font=('Helvetica','12')).grid(row=5, column=1, sticky=tk.W)
         tk.Label(self, text="Score:", font=('Helvetica','12')).grid(row=6, column=0)
         tk.Label(self, textvariable=self.opponent.score, font=('Helvetica','12')).grid(row=6, column=1, sticky=tk.W)
-        self.msg = tk.Label(self, font=('Helvetica','12'))
-        self.msg.grid(row=8,column=(self.holeNum//2),columnspan=3)
+        self.msg = tk.Label(self, text=self.player.name.get() + "'s Turn.", font=('Helvetica','12'), fg="blue")
+        self.msg.grid(row=10, column=0, columnspan=15, sticky=tk.W)
+        self.msg2 = tk.Label(self, font=('Helvetica','12'), fg="blue")
+        self.msg2.grid(row=11, column=0, columnspan=10, sticky=tk.W)
 
         #create Hole Button
         j = (self.holeNum // 2) - 1
@@ -139,18 +135,26 @@ class Board(tk.Frame):
                 self.opponent.holes[n] = hole
                 n += 1
             hole.grid(padx=5, pady=5, row=(i//(self.holeNum//2)) + 3, column=(i%(self.holeNum//2)))
-
+        
         for player in self.playerList:
             if not player.isTurn:
                 for hole in player.holes:
                     hole.config(state=tk.DISABLED)
-                    
+        
     def holeClicked(self, pos):
+        #once a Hole clicked, disable button click
         for button in self.holeList:
             button.config(state=tk.DISABLED)
-        self.msg.config(text="")
+
+        for player in self.playerList:
+            if player.isTurn:
+                self.msg.config(text=player.name.get() + "'s Turn.")
+                if player.isBot:
+                    self.update()
+                    self.after(600)
+                    self.msg2.config(text="Bot pick Hole " + str(pos + 1))
             
-        n = self.holeList[pos].seed   #get current Hole's marble
+        n = self.holeList[pos].seed   #get current Hole's seed
 
         #while the Hole is not empty, distribute seed
         while n != 0:
@@ -171,11 +175,16 @@ class Board(tk.Frame):
                 for hole in player.holes:
                     if hole.seed != 0:
                         hole.config(state=tk.NORMAL)
-                self.msg.config(text=player.name.get() + "'sTurn!")
+                self.msg.config(text=player.name.get() + "'s Turn!")
+                self.msg2.config(text="")
                     
         if self.checkEndGame():
             self.winner = self.player if self.player.score.get() > self.opponent.score.get() else self.opponent
-            self.msg.config(text=self.winner.name.get() + " win!!!")
+            self.update()
+            self.after(1000)
+            self.msg.config(text="Player " + self.winner.name.get() + " has more seeds! WIN!!!")
+
+        self.checkBotTurn()
         
     def updateBoard(self, pos):
         n = self.holeList[pos].seed
@@ -195,7 +204,14 @@ class Board(tk.Frame):
                         return False
         return True
 
+    def checkBotTurn(self):
+        for player in self.playerList:
+            if player.isTurn and player.isBot:
+                for hole in player.holes:
+                    if hole['state'] == 'normal':
+                        hole.invoke()
 
+        
 if __name__ == "__main__":
     app = Mancala()
     app.mainloop()
