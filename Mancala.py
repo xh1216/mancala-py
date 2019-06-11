@@ -118,22 +118,21 @@ class Board(tk.Frame):
         self.msg = tk.Label(self, text=self.player.name.get() + "'s Turn.", font=('Helvetica','12'), fg="blue")
         self.msg.grid(row=10, column=0, columnspan=15, sticky=tk.W)
         self.msg2 = tk.Label(self, font=('Helvetica','12'), fg="blue")
-        self.msg2.grid(row=11, column=0, columnspan=10, sticky=tk.W)
+        self.msg2.grid(row=11, column=0, columnspan=15, sticky=tk.W)
 
-        #create Hole Button
-        j = (self.holeNum // 2) - 1
-        n = 0
+        #create Hole Button        
+        j = self.holeNum // 2
         for i in range(self.holeNum):
             if i < self.holeNum // 2:
-                hole = Hole(self, i+j, self.seedNum)
-                self.holeList[i+j] = hole
-                self.player.holes[i+j] = hole
-                j -= 2
+                j -= 1
+                hole = Hole(self, j, self.seedNum)
+                self.holeList[j] = hole
+                self.player.holes[j] = hole
             else:
                 hole = Hole(self, i, self.seedNum)
                 self.holeList[i] = hole
-                self.opponent.holes[n] = hole
-                n += 1
+                self.opponent.holes[j] = hole
+                j += 1
             hole.grid(padx=5, pady=5, row=(i//(self.holeNum//2)) + 3, column=(i%(self.holeNum//2)))
         
         for player in self.playerList:
@@ -142,32 +141,28 @@ class Board(tk.Frame):
                     hole.config(state=tk.DISABLED)
         
     def holeClicked(self, pos):
-        #once a Hole clicked, disable button click
-        for button in self.holeList:
-            button.config(state=tk.DISABLED)
+        for hole in self.holeList:
+            hole.config(state=tk.DISABLED)  #once a Hole clicked, disable all button click
 
         for player in self.playerList:
             if player.isTurn:
                 self.msg.config(text=player.name.get() + "'s Turn.")
                 if player.isBot:
                     self.update()
-                    self.after(600)
+                    self.after(800)
                     self.msg2.config(text="Bot pick Hole " + str(pos + 1))
             
-        n = self.holeList[pos].seed   #get current Hole's seed
-
-        #while the Hole is not empty, distribute seed
-        while n != 0:
+        n = self.holeList[pos].seed     #get current Hole's seed
+        while n != 0:       #while the Hole is not empty, distribute seed
             endPos = self.updateBoard(pos)
             pos = (endPos + 1) % len(self.holeList)
             n = self.holeList[pos].seed
-            
-        #until a Hole is empty, another player's turn
-        for player in self.playerList:
+
+        self.playerList.sort(key=lambda player: player.isTurn, reverse=True)
+        for player in self.playerList:  #until a Hole is empty, another player's turn
             if player.isTurn:
                 nextHole = self.holeList[(pos + 1) % len(self.holeList)]
-                score = player.score.get()
-                player.score.set(score + nextHole.seed)
+                player.score.set(player.score.get() + nextHole.seed)
                 nextHole.setSeed(0)
                 player.isTurn = False
             else:
@@ -181,10 +176,10 @@ class Board(tk.Frame):
         if self.checkEndGame():
             self.winner = self.player if self.player.score.get() > self.opponent.score.get() else self.opponent
             self.update()
-            self.after(1000)
-            self.msg.config(text="Player " + self.winner.name.get() + " has more seeds! WIN!!!")
-
-        self.checkBotTurn()
+            self.after(800)
+            self.msg2.config(text="Player " + self.winner.name.get() + " has more seeds! WIN!!")
+        else:
+            self.checkBotTurn()
         
     def updateBoard(self, pos):
         n = self.holeList[pos].seed
@@ -202,6 +197,9 @@ class Board(tk.Frame):
                 for hole in player.holes:
                     if hole.seed != 0:
                         return False
+                self.update()
+                self.after(800)
+                self.msg.config(text=player.name.get() + "'s Turn. The holes of " + player.name.get() + "'s side are empty. -End Game-")
         return True
 
     def checkBotTurn(self):
