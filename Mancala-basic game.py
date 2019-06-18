@@ -1,5 +1,4 @@
 import tkinter as tk
-import copy
 
 
 class Mancala(tk.Tk):
@@ -92,138 +91,9 @@ class Hole(tk.Button):
         self.seed = i
         self.btnText.set(self.seed)
         self.update()
-        self.after(500)
+        self.after(100)
 
-
-class MinimaxBoard:
-
-    currentHoleList = None
-    currentPlayerSeed = 0
-    currentBotSeed = 0
-
-    def __init__(self, holeList, playerSeed, botSeed):
-        self.holeList = holeList
-        self.playerSeed = playerSeed
-        self.botSeed = botSeed
-        self.initialHoleList = tuple(tuple(x) for x in holeList)
-        self.initialPlayerSeed = playerSeed
-        self.initialBotSeed = botSeed
-        self.isBotTurn = True
-
-    def findBestMove(self):
-        bestVal = -1000
-        bestCol = -1
-        moveVal = 0
-        row = 1
-        for col in range(len(self.holeList[row])):
-            #print(self.holeList[row][col])
-            if self.holeList[row][col] != 0:                                    # correct
-                self.distributeSeed(row, col)                                   # i guess correct
-                MinimaxBoard.currentHoleList = tuple(tuple(x) for x in self.holeList)
-                #print(MinimaxBoard.currentHoleList)
-                MinimaxBoard.currentPlayerSeed = self.playerSeed
-                MinimaxBoard.currentBotSeed = self.botSeed
-                moveVal = self.minimax(self, self.isBotTurn)
-                self.holeList = list(list(x) for x in self.initialHoleList)
-                #print(self.initialHoleList)
-                self.playerSeed = self.initialPlayerSeed
-                self.botSeed = self.initialBotSeed
-                print(moveVal)
-                if moveVal > bestVal:
-                    bestVal = moveVal
-                    bestCol = col
-        print(bestCol)
-        return bestCol
-
-    def distributeSeed(self, row, col):     #stop when hole is empty
-        seed = self.holeList[row][col]
-        while seed != 0:
-            self.holeList[row][col] = 0
-            for i in range(seed):
-                col = col - 1 if row == 0 else col + 1
-                row, col = self.checkOutOfRange(row, col)
-                self.holeList[row][col] += 1
-            col = col - 1 if row == 0 else col + 1
-            row, col = self.checkOutOfRange(row, col)
-            seed = self.holeList[row][col]
-        #print(self.holeList)                                                   #hole list wrong
-        #hole is empty, assign next hole's seed to player
-        col = col - 1 if row == 0 else col + 1
-        row, col = self.checkOutOfRange(row, col)
-        nextHoleSeed = self.holeList[row][col]
-        self.holeList[row][col] = 0
         
-        if self.isBotTurn:
-            self.botSeed += nextHoleSeed
-        else:
-            self.playerSeed += nextHoleSeed
-        self.isBotTurn = not self.isBotTurn
-                                                                        #correct, seed is increasing 
-
-    def checkOutOfRange(self, row, col):
-        if row == 0 and col < 0:
-            row, col = 1, 0
-        if row == 1 and col > len(self.holeList[row]) - 1:
-            row, col = 0, len(self.holeList[row]) - 1
-        return row, col
-
-    def evaluate(self, board):
-        if self.isEndGame(board):
-            if board.botSeed > board.playerSeed:
-                return 20
-            else:
-                return -20
-        return 0
-
-    #buggg
-    def isEndGame(self, board):
-        row = 1 if board.isBotTurn else 0
-        for hole in board.holeList[row]:
-                if hole != 0:
-                    return False
-        return True
-
-    def minimax(self, board, isMax):
-
-        minimaxScore = self.evaluate(board)         ##buggg, tie
-        #print("\n", board.isBotTurn, "    MINIMAX SCORE:", minimaxScore)
-
-        if minimaxScore == 20 or minimaxScore == -20:
-            return minimaxScore
-
-        if self.isEndGame(board):
-            return 0
-
-        if isMax:
-            best = -1000
-            for col in range(len(board.holeList[1])):
-                if board.holeList[1][col] != 0:
-                    board.distributeSeed(1, col)
-                    #print("MAX    ", board.holeList)
-                    best = max(best, self.minimax(board, False))
-
-                    board.holeList = list(list(x) for x in MinimaxBoard.currentHoleList)
-                    board.playerSeed = MinimaxBoard.currentPlayerSeed
-                    board.botSeed = MinimaxBoard.currentBotSeed
-                    break
-            #print("11111     ", best)
-            return best
-        else:
-            best = 1000
-            for col in range(len(board.holeList[0])):
-                if board.holeList[0][col] != 0:
-                    board.distributeSeed(0, col)
-                    #print("MIN     ", board.holeList)
-                    best = min(best, self.minimax(board, True))
-
-                    board.holeList = list(list(x) for x in MinimaxBoard.currentHoleList)
-                    board.playerSeed = MinimaxBoard.currentPlayerSeed
-                    board.botSeed = MinimaxBoard.currentBotSeed
-                    break
-            #print("22222     ", best)
-            return best
-        
-    
 class Board(tk.Frame):
     #create Game Board Frame
     def __init__(self, parent, controller):
@@ -281,19 +151,15 @@ class Board(tk.Frame):
                     self.msg2.config(text="Bot pick Hole col " + str(col+1))
 
         self.startBoard(row, col)
-
-    def distributeSeed(self, row, col):
-        s = self.holeList[row][col].seed     #get current Hole's seed
-        while s != 0:       #while the Hole is not empty, distribute seed; stop when Hole is empty
-            self.holeList[row][col].setSeed(0)
-            for i in range(s):
-                col = col - 1 if row == 0 else col + 1
-                row, col = self.checkOutOfRange(row, col)
-                self.holeList[row][col].setSeed(self.holeList[row][col].seed + 1)
+        
+    def updateBoard(self, row, col):
+        s = self.holeList[row][col].seed
+        self.holeList[row][col].setSeed(0)
+        for i in range(s):
             col = col - 1 if row == 0 else col + 1
             row, col = self.checkOutOfRange(row, col)
-            s = self.holeList[row][col].seed
-
+            self.holeList[row][col].setSeed(self.holeList[row][col].seed + 1)
+            
         return row, col
 
     def takeTurn(self, row, col):
@@ -316,34 +182,25 @@ class Board(tk.Frame):
 
     def isEndGame(self):    #check if the game is ended
         for player in self.playerList:
-            if player.isTurn:
-                for hole in player.holes:
-                    if hole.seed != 0:
-                        return False
+            if all(i.seed == 0 for i in player.holes):
                 self.update()
                 self.after(800)
                 self.msg.config(text=player.name.get() + "'s Turn. The holes of " + player.name.get() + "'s side are empty. -End Game-")
-        return True
+                return True
+        return False
 
     def isBotTurn(self):    #check if it is Bot's turn
         for player in self.playerList:
             if player.isTurn and player.isBot:
-                col = self.botMove()
-                player.holes[col].invoke()
-##                for hole in player.holes:
-##                    if hole['state'] == 'normal':
-##                        hole.invoke()
+                for hole in player.holes:
+                    if hole['state'] == 'normal':
+                        hole.invoke()
 
     def botMove(self):
-        minimaxHoleList = [[None] * self.holeNum] + [[None] * self.holeNum]
-        for i in range(len(self.playerList)):
-            for j in range(self.holeNum):
-                seed = self.holeList[i][j].seed
-                minimaxHoleList[i][j] = seed
-                
-        newBoard = MinimaxBoard(minimaxHoleList, self.player.score.get(), self.opponent.score.get())
-        return newBoard.findBestMove()
-                
+        pass
+
+    def evaluate(self):
+        pass
 
     def checkOutOfRange(self, row, col):
         if row == 0 and col < 0:
@@ -353,11 +210,15 @@ class Board(tk.Frame):
         return row, col
         
     def startBoard(self, row, col):
-        
-        row, col = self.distributeSeed(row, col)
+        n = self.holeList[row][col].seed     #get current Hole's seed
+        while n != 0:       #while the Hole is not empty, distribute seed
+            row, col = self.updateBoard(row, col)
+            col = col - 1 if row == 0 else col + 1
+            row, col = self.checkOutOfRange(row, col)
+            n = self.holeList[row][col].seed
 
-        self.takeTurn(row, col)
-        
+        self.takeTurn(row, col)     #Hole is empty, players take turn
+
         if self.isEndGame():
             self.winner = self.player if self.player.score.get() > self.opponent.score.get() else self.opponent
             self.update()
