@@ -14,14 +14,13 @@ class Mancala(tk.Tk):
         self.title("Mancala")
         self.geometry("500x500")
         setattr(Mancala, MenuPage.__name__, MenuPage(container, self))
-        getattr(Mancala, MenuPage.__name__).grid(row=0, column=0, sticky="nsew")
-        getattr(Mancala, MenuPage.__name__).tkraise()
+        self.MenuPage.grid(row=0, column=0, sticky="nsew")
+        self.MenuPage.tkraise()
 
         
 class MenuPage(tk.Frame):
     
     #create MenuPage Frame
-    
     def __init__(self, parent, controller):
         
         tk.Frame.__init__(self, parent)
@@ -29,16 +28,20 @@ class MenuPage(tk.Frame):
         self.controller = controller
         self.player1_name = tk.StringVar()
         self.player2_name = tk.StringVar()
-        self.vs_radio_button = tk.IntVar()
+        self.radio_button = tk.IntVar()
         self.hole_num = tk.IntVar()
         self.seed_num = tk.IntVar()
+        self.AI_depth = tk.IntVar()
         
         tk.Label(self, text="Mancala", font=('Helvetica','18')).place(x=190, y=30)
         tk.Label(self, text="Player Name:", font=('Helvetica','12')).place(x=130, y=100)
         tk.Entry(self, font=('Helvetica','12'), textvariable=self.player1_name).place(x=240, y=102, width=100)
-        tk.Label(self, text="VS:", font=('Helvetica','12')).place(x=95, y=165)
-        tk.Radiobutton(self, text="Computer", variable=self.vs_radio_button, value=0, font=('Helvetica','12'), command=lambda:self.vs_entry.config(state=tk.DISABLED)).place(x=135, y=150)
-        tk.Radiobutton(self, text="Player Name:", variable=self.vs_radio_button, value=1, font=('Helvetica','12'), command=lambda:self.vs_entry.config(state=tk.NORMAL)).place(x=135, y=175)
+        tk.Label(self, text="VS:", font=('Helvetica','12')).place(x=95, y=163)
+        tk.Radiobutton(self, text="AI Bot - AI Depth(1-5):", variable=self.radio_button, value=0, font=('Helvetica','12'),
+                       command=lambda:self.vs_entry.config(state=tk.DISABLED)).place(x=135, y=145)
+        tk.Entry(self, font=('Helvetica','12'), textvariable=self.AI_depth).place(x=320, y=148, width=30)
+        tk.Radiobutton(self, text="Player Name:", variable=self.radio_button, value=1, font=('Helvetica','12'),
+                       command=lambda:self.vs_entry.config(state=tk.NORMAL)).place(x=135, y=175)
         self.vs_entry = tk.Entry(self, font=('Helvetica','12'), textvariable=self.player2_name, state=tk.DISABLED)
         self.vs_entry.place(x=265, y=177, width=100)
         tk.Label(self, text="Number of holes\n(4-8 per row):", font=('Helvetica','12'), justify=tk.RIGHT).place(x=130, y=220)
@@ -46,84 +49,81 @@ class MenuPage(tk.Frame):
         tk.Label(self, text="Number of seeds\n(4-10 per hole):", font=('Helvetica','12'), justify=tk.RIGHT).place(x=130, y=280)
         tk.Entry(self, font=('Helvetica','12'), textvariable=self.seed_num).place(x=260, y=299, width=30)
         tk.Button(self, text="Start Game", font=('Helvetica','16'), command=self.start_clicked).place(x=175, y=360)
-        self.msg = tk.Label(self, font=('Helvetica','10'), fg="red")
+        self.msg = tk.Label(self, font=('Helvetica','10'), fg="red", justify=tk.LEFT)
         self.msg.place(x=345, y=101)
             
-    def start_clicked(self):
+    def start_clicked(self):    #check user input
         
         self.msg.config(text="")
         if not self.player1_name.get():
             self.msg.config(text="Enter player name")
-        elif self.vs_radio_button.get() == 1 and not self.player2_name.get():
-            self.msg.config(text="Enter player name")
-            self.msg.place(x=370, y=177)
+        elif self.player1_name.get() == "AI Bot":
+            self.msg.config(text="Same name as AI.\nEnter different name.")
+        elif self.radio_button.get() == 0 and (self.AI_depth.get() < 1 or self.AI_depth.get() > 5):
+            self.msg.config(text="Enter number 1-5"); self.msg.place(x=355, y=148)
+        elif self.radio_button.get() == 1 and not self.player2_name.get():
+            self.msg.config(text="Enter player name"); self.msg.place(x=370, y=177)
         elif self.player1_name.get() == self.player2_name.get():
-            self.msg.config(text="Enter different name")
-            self.msg.place(x=370, y=177)
+            self.msg.config(text="Enter different name"); self.msg.place(x=370, y=177)
         elif self.hole_num.get() < 4 or self.hole_num.get() > 8:
-            self.msg.config(text="Enter number 4-8")
-            self.msg.place(x=302, y=239)
+            self.msg.config(text="Enter number 4-8"); self.msg.place(x=302, y=239)
         elif self.seed_num.get() < 4 or self.seed_num.get() > 10:
-            self.msg.config(text="Enter number 4-10")
-            self.msg.place(x=302, y=299)
+            self.msg.config(text="Enter number 4-10"); self.msg.place(x=302, y=299)
         else:
             frame = Board(self.parent, self.controller)
-            frame.grid(row=0, column=0, sticky="nsew")
-            frame.tkraise()
+            frame.grid(row=0, column=0, sticky="nsew"); frame.tkraise()
 
 
 class Player:
 
-    def __init__(self, name, is_bot, is_turn, side_of_board):
+    def __init__(self, name, is_AI, is_turn, side_of_board):
         
         self.name = name
         self.opponent = None
         self.side_of_board = side_of_board
-        self.is_bot = is_bot
+        self.is_AI = is_AI
         self.is_turn = is_turn
         self.holes = [None] * (Mancala.MenuPage.hole_num.get())
         self.score = tk.IntVar()
 
     def move(self, hole_list, row, col):
         
-        s = hole_list[row][col].seed    #get current Hole's seed
-        
-        while s != 0:           #while the Hole is not empty, distribute seed; stop when Hole is empty
+        s = hole_list[row][col].seed        #while Hole is not empty, distribute seed
+        while s != 0:           
             hole_list[row][col].set_seed(0)
             for i in range(s):
-                col = col - 1 if row == 0 else col + 1
-                row, col = self.is_out_of_range(row, col)
+                row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
                 hole_list[row][col].set_seed(hole_list[row][col].seed + 1)
-            col = col - 1 if row == 0 else col + 1
-            row, col = self.is_out_of_range(row, col)
-            s = hole_list[row][col].seed
 
-        col = col - 1 if row == 0 else col + 1      #capture next hole's seed to own store
-        row, col = self.is_out_of_range(row, col)
+            row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+            s = hole_list[row][col].seed
+ 
+        row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
         next_hole = hole_list[row][col]
-        self.score.set(self.score.get() + next_hole.seed)
+        self.score.set(self.score.get() + next_hole.seed)       #capture next hole's seed to own store
         next_hole.set_seed(0)
 
-    def AI_move(self, board):
+    def AI_move(self, board):       #AI's turn, create AI Board to pick the best move from possible moves
         
-        copy_board = copy.copy(board)
-        minimax_hole_list = [[None] * Mancala.MenuPage.hole_num.get()] + [[None] * Mancala.MenuPage.hole_num.get()]
+        AI_hole_list = [[None] * Mancala.MenuPage.hole_num.get()] + [[None] * Mancala.MenuPage.hole_num.get()]
 
         for i in range(len(board.hole_list)):
             for j in range(len(board.hole_list[i])):
-                minimax_hole_list[i][j] = board.hole_list[i][j].seed
-        copy_board.hole_list = minimax_hole_list
-        new_board = MinimaxBoard(copy_board, self.score.get(), self.opponent.score.get(), True)
-        col = new_board.find_best_move()
+                AI_hole_list[i][j] = board.hole_list[i][j].seed
+
+        copy_board = copy.copy(board)
+        copy_board.hole_list = AI_hole_list
+        AI_board = MinimaxBoard(copy_board, self.score.get(), self.opponent.score.get(), True)
+        col = AI_board.find_best_move()
         self.holes[col].invoke()
 
-    def is_out_of_range(self, row, col):
+    def check_pos(self, row, col):  #check if the position is within board
         
         if row == 0 and col < 0:
             row, col = 1, 0
-        if row == 1 and col > Mancala.MenuPage.hole_num.get() - 1:
-            row, col = 0, Mancala.MenuPage.hole_num.get() - 1
-        return row, col     
+        if row == 1 and col > len(self.holes) - 1:
+            row, col = 0, len(self.holes) - 1
+        return row, col
 
 
 class Hole(tk.Button):
@@ -135,7 +135,8 @@ class Hole(tk.Button):
         self.col = col
         self.seed = seed
         self.seed_text = tk.StringVar()
-        tk.Button.__init__(self, board, textvariable=self.seed_text, font=('Helvetica','12'), height=2, width=4, command=lambda:self.board.hole_clicked(self.row, self.col))
+        tk.Button.__init__(self, board, textvariable=self.seed_text, font=('Helvetica','13'), height=2, width=4,
+                           command=lambda:self.board.hole_clicked(self.row, self.col))
         self.seed_text.set(self.seed)
 
     def set_seed(self, i):
@@ -143,7 +144,7 @@ class Hole(tk.Button):
         self.seed = i
         self.seed_text.set(self.seed)
         self.update()
-        self.after(100)
+        self.after(400)
 
 
 class Board(tk.Frame):
@@ -155,27 +156,32 @@ class Board(tk.Frame):
         self.controller = controller
         self.hole_num = Mancala.MenuPage.hole_num.get()
         self.seed_num = Mancala.MenuPage.seed_num.get()
-        self.player1 = Player(Mancala.MenuPage.player1_name, False, True, 0)
+        self.player1 = Player(Mancala.MenuPage.player1_name, False, True, 0)    #create player
         self.AI_name = tk.StringVar()
         self.AI_name.set("AI Bot")
-        self.player2 = Player(self.AI_name, True, False, 1) if Mancala.MenuPage.vs_radio_button.get() == 0 else Player(Mancala.MenuPage.player2_name, False, False, 1)
-        self.player1.opponent = self.player2
-        self.player2.opponent = self.player1
+        self.player2 = Player(self.AI_name, True, False, 1) if Mancala.MenuPage.radio_button.get() == 0 else Player(Mancala.MenuPage.player2_name, False, False, 1)
+        self.player1.opponent, self.player2.opponent = self.player2, self.player1
         self.player_list = [self.player1, self.player2]
-        self.hole_list = [[None] * self.hole_num] + [[None] * self.hole_num]
+        self.hole_list = [[None] * self.hole_num] + [[None] * self.hole_num]    #create Hole's list
 
         tk.Label(self, text="Player:", font=('Helvetica','12')).grid(row=0, column=0)
         tk.Label(self, textvariable=self.player1.name, font=('Helvetica','12')).grid(row=0, column=1, columnspan=10, sticky=tk.W)
         tk.Label(self, text="Score:", font=('Helvetica','12')).grid(row=1, column=0)
         tk.Label(self, textvariable=self.player1.score, font=('Helvetica','12')).grid(row=1, column=1, columnspan=5, sticky=tk.W)
-        tk.Label(self, text="Player:", font=('Helvetica','12')).grid(row=5, column=0)
-        tk.Label(self, textvariable=self.player2.name, font=('Helvetica','12')).grid(row=5, column=1, sticky=tk.W)
-        tk.Label(self, text="Score:", font=('Helvetica','12')).grid(row=6, column=0)
-        tk.Label(self, textvariable=self.player2.score, font=('Helvetica','12')).grid(row=6, column=1, sticky=tk.W)
-        self.msg = tk.Label(self, text=self.player1.name.get() + "'s Turn.", font=('Helvetica','12'), fg="blue")
-        self.msg.grid(row=10, column=0, columnspan=15, sticky=tk.W)
-        self.msg2 = tk.Label(self, font=('Helvetica','12'), fg="blue")
-        self.msg2.grid(row=11, column=0, columnspan=15, sticky=tk.W)
+        tk.Label(self, text="------------------------------------------------").grid(row=2, column=0, columnspan=10, sticky=tk.W)
+        for i in range(len(self.hole_list[0])):
+            tk.Label(self, text="Col " + str(i+1), font=('Helvetica','11')).grid(row=3, column=i)
+        tk.Label(self, text="------------------------------------------------").grid(row=7, column=0, columnspan=10, sticky=tk.W)
+        tk.Label(self, text="Player:", font=('Helvetica','12')).grid(row=8, column=0)
+        tk.Label(self, textvariable=self.player2.name, font=('Helvetica','12')).grid(row=8, column=1, sticky=tk.W)
+        tk.Label(self, text="Score:", font=('Helvetica','12')).grid(row=9, column=0)
+        tk.Label(self, textvariable=self.player2.score, font=('Helvetica','12')).grid(row=9, column=1, columnspan=5, sticky=tk.W)
+        tk.Label(self, text="   AI Depth Limit:", font=('Helvetica','12')).grid(row=8, column=2, columnspan=2, sticky=tk.W)
+        tk.Label(self, textvariable=Mancala.MenuPage.AI_depth, font=('Helvetica','12')).grid(row=8, column=4, sticky=tk.W)
+        self.msg = tk.Label(self, text=self.player1.name.get() + "'s Turn.", font=('Helvetica','13'), fg="blue")
+        self.msg.grid(row=11, column=0, columnspan=15, sticky=tk.W)
+        self.msg2 = tk.Label(self, font=('Helvetica','13'), fg="blue")
+        self.msg2.grid(row=12, column=0, columnspan=15, sticky=tk.W)
 
         #create Hole Button
         for i in range(len(self.player_list)):
@@ -186,44 +192,37 @@ class Board(tk.Frame):
                     self.player1.holes[j] = hole
                 else:
                     self.player2.holes[j] = hole
-                hole.grid(padx=5, pady=5, row=i+3, column=j)
+                hole.grid(padx=5, pady=5, row=i+5, column=j)
         
         for player in self.player_list:
             if not player.is_turn:
                 for hole in player.holes:
                     hole.config(state=tk.DISABLED)
-
-        self.is_bot_turn()
         
     def hole_clicked(self, row, col):
         
         for holes in self.hole_list:
             for hole in holes:
-                hole.config(state=tk.DISABLED)  #once a Hole is clicked, disable all button click
+                hole.config(state=tk.DISABLED)      #once a Hole is clicked, disable all button click
 
         for player in self.player_list:
             if player.is_turn:
                 self.msg.config(text=player.name.get() + "'s Turn.")
-                if player.is_bot:
-                    self.update()
-                    self.after(800)
-                    self.msg2.config(text="Bot pick Hole col " + str(col+1))
-                    print("Bot pick Hole col " + str(col+1))
+                if player.is_AI:
+                    self.update(); self.after(800)
+                    self.msg2.config(text="Bot pick Hole Col " + str(col+1))
+                    self.update(); self.after(500)
                 player.move(self.hole_list, row, col)
 
         self.take_turn()
 
         if not self.is_end_game():
-            self.is_bot_turn()
+            self.is_AI_turn()
         else:
-            self.winner = self.player1 if self.player1.score.get() > self.player2.score.get() else self.player2         #draw
-            self.update()
-            self.after(800)
-            self.msg2.config(text="Player " + self.winner.name.get() + " has more seeds! WIN!!")
+            self.check_winner()
 
-    def take_turn(self):
+    def take_turn(self):        #players take turn
         
-        #self.player_list.sort(key=lambda player: player.is_turn, reverse=True)    #sort player's index to the first if it is the player's turn 
         for player in self.player_list:
             if player.is_turn:
                 player.is_turn = False
@@ -232,16 +231,15 @@ class Board(tk.Frame):
                 for hole in player.holes:
                     if hole.seed != 0:
                         hole.config(state=tk.NORMAL)
-                self.msg.config(text=player.name.get() + "'s Turn!")
-                self.msg2.config(text="")
+                self.msg.config(text=player.name.get() + "'s Turn!"); self.msg2.config(text="")
 
-    def is_bot_turn(self):    #check if it is Bot's turn
+    def is_AI_turn(self):       #check if it is AI's turn
         
         for player in self.player_list:
-            if player.is_turn and player.is_bot:
+            if player.is_turn and player.is_AI:
                 player.AI_move(self)
 
-    def is_end_game(self):    #check if the game is ended
+    def is_end_game(self):      #check if the game is ended: if it is the player's turn & the player's side is empty
 
         for player in self.player_list:
             if player.is_turn:
@@ -253,60 +251,67 @@ class Board(tk.Frame):
                 self.msg.config(text=player.name.get() + "'s Turn. The holes of " + player.name.get() + "'s side are empty. -End Game-")
         return True
 
+    def check_winner(self):     #check winner
+        
+        self.update(); self.after(800)
+        if self.player1.score.get() == self.player2.score.get():
+            self.msg2.config(text="Both players have same number of seeds! DRAW!")
+        else:
+            self.winner = self.player1 if self.player1.score.get() > self.player2.score.get() else self.player2
+            self.msg2.config(text="Player " + self.winner.name.get() + " has more seeds! WIN!!")
+            
 
 class MinimaxBoard:
 
-    def __init__(self, board, AI_seed, opponent_seed, is_bot_turn):
+    def __init__(self, board, AI_seed, opponent_seed, is_AI_turn):
         
         self.hole_list = list(list(x) for x in board.hole_list)
         self.AI_seed = AI_seed
         self.opponent_seed = opponent_seed
-        self.is_bot_turn = is_bot_turn
+        self.is_AI_turn = is_AI_turn
 
-    def find_best_move(self):
-        
+    def find_best_move(self):       #get the best score of each possible move from Minimax algorithm,
+                                    #return the best move with the highest score
         best_val = -1000
         best_col = -1
         move_val = 0
         row = 1
+        
         for col in range(len(self.hole_list[row])):
-            if self.hole_list[row][col] != 0:                                    # correct
-                new_board = MinimaxBoard(self, self.AI_seed, self.opponent_seed, self.is_bot_turn)
+            if self.hole_list[row][col] != 0:
+                new_board = MinimaxBoard(self, self.AI_seed, self.opponent_seed, self.is_AI_turn)
                 new_board.bot_move(row, col)
-                move_val = self.minimax(new_board, 0, new_board.is_bot_turn)
+                move_val = self.minimax(new_board, 0, new_board.is_AI_turn)
+                
                 if move_val > best_val:
                     best_val = move_val
                     best_col = col
-##                print("best val ", best_val)
-##        print("pick col ", best_col)
+                    
         return best_col
 
     def bot_move(self, row, col):
         
         seed = self.hole_list[row][col]
-        while seed != 0:
+        
+        while seed != 0:        #while hole is not empty, distribute seed
             self.hole_list[row][col] = 0
             for i in range(seed):
-                col = col - 1 if row == 0 else col + 1
-                row, col = self.is_out_of_range(row, col)
+                row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
                 self.hole_list[row][col] += 1
-            col = col - 1 if row == 0 else col + 1
-            row, col = self.is_out_of_range(row, col)
+            row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
             seed = self.hole_list[row][col]
 
-        col = col - 1 if row == 0 else col + 1
-        row, col = self.is_out_of_range(row, col)
+        row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
         next_hole_seed = self.hole_list[row][col]
         self.hole_list[row][col] = 0
         
-        if self.is_bot_turn:
+        if self.is_AI_turn:     #assign next hole's seed to player
             self.AI_seed += next_hole_seed
         else:
             self.opponent_seed += next_hole_seed
-            
-        self.is_bot_turn = not self.is_bot_turn
-                                                                        #correct, seed is increasing 
-    def is_out_of_range(self, row, col):
+        self.is_AI_turn = not self.is_AI_turn     #players take turn
+        
+    def check_pos(self, row, col):
         
         if row == 0 and col < 0:
             row, col = 1, 0
@@ -316,52 +321,39 @@ class MinimaxBoard:
 
     def evaluate(self):
         
-        return self.AI_seed - self.opponent_seed
+        return self.AI_seed - self.opponent_seed        #return difference of AI and user's seed
 
-    #buggg
-    def is_end_game(self):
+    def is_end_game(self):    #check if the game is ended: if it is the player's turn & the player's side is empty
         
-        row = 1 if self.is_bot_turn else 0
+        row = 1 if self.is_AI_turn else 0
         for hole in self.hole_list[row]:
-                if hole != 0:
-                    return False
+            if hole != 0:
+                return False
         return True
 
-    def minimax(self, board, depth, is_max):
+    def minimax(self, board, depth, is_max):    #execute every possible move of AI & user, return the best score
         
-        if board.is_end_game() or depth == 5:
-            minimax_score = board.evaluate()
-            return minimax_score
+        if board.is_end_game() or depth == Mancala.MenuPage.AI_depth.get():     #set depth to limit the searching
+            
+            return board.evaluate()         #return the move's result when the game is ended or reach the depth
 
         if is_max:
             best = -1000
             for col in range(len(board.hole_list[1])):
                 if board.hole_list[1][col] != 0:
-                    new_board = MinimaxBoard(board, board.AI_seed, board.opponent_seed, board.is_bot_turn)
+                    new_board = MinimaxBoard(board, board.AI_seed, board.opponent_seed, board.is_AI_turn)
                     new_board.bot_move(1, col)
+                    best = max(best, board.minimax(new_board, depth+1, False))
                     
-##                    print("MAX    ", new_board.hole_list)
-                    
-                    a = board.minimax(new_board, depth+1, False)
-                    best = max(best, a)
-##                    print("MAX RETURN      ", a)
-##            print("MAX BEST RETURN     ", best)
             return best
         else:
             best = 1000
             for col in range(len(board.hole_list[0])):
                 if board.hole_list[0][col] != 0:
-                    new_board = MinimaxBoard(board, board.AI_seed, board.opponent_seed, board.is_bot_turn)
+                    new_board = MinimaxBoard(board, board.AI_seed, board.opponent_seed, board.is_AI_turn)
                     new_board.bot_move(0, col)
+                    best = min(best, board.minimax(new_board, depth+1, True))
                     
-##                    print("MIN     ", new_board.hole_list)
-                    
-                    r = board.minimax(new_board, depth+1, True)
-                    best = min(best, r)
-##                    print("MIN RETURN      ", r)
-
-                    
-##            print("MIN BEST RETURN     ", best)
             return best
 
         
