@@ -76,11 +76,10 @@ class MenuPage(tk.Frame):
 
 class Player:
 
-    def __init__(self, name, is_AI, is_turn, side_of_board):
+    def __init__(self, name, is_AI, is_turn):
         
         self.name = name
         self.opponent = None
-        self.side_of_board = side_of_board
         self.is_AI = is_AI
         self.is_turn = is_turn
         self.holes = [None] * (Mancala.MenuPage.hole_num.get())
@@ -92,13 +91,13 @@ class Player:
         while s != 0:           
             hole_list[row][col].set_seed(0)
             for i in range(s):
-                row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+                row, col = self.next_pos(row, col)
                 hole_list[row][col].set_seed(hole_list[row][col].seed + 1)
 
-            row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+            row, col = self.next_pos(row, col)
             s = hole_list[row][col].seed
  
-        row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+        row, col = self.next_pos(row, col)
         next_hole = hole_list[row][col]
         self.score.set(self.score.get() + next_hole.seed)       #capture next hole's seed to own store
         next_hole.set_seed(0)
@@ -117,7 +116,9 @@ class Player:
         col = AI_board.find_best_move()
         self.holes[col].invoke()
 
-    def check_pos(self, row, col):  #check if the position is within board
+    def next_pos(self, row, col):  #get the position of next hole
+        
+        col = col - 1 if row == 0 else col + 1
         
         if row == 0 and col < 0:
             row, col = 1, 0
@@ -143,8 +144,7 @@ class Hole(tk.Button):
         
         self.seed = i
         self.seed_text.set(self.seed)
-        self.update()
-        self.after(400)
+        self.update(); self.after(400)
 
 
 class Board(tk.Frame):
@@ -156,10 +156,10 @@ class Board(tk.Frame):
         self.controller = controller
         self.hole_num = Mancala.MenuPage.hole_num.get()
         self.seed_num = Mancala.MenuPage.seed_num.get()
-        self.player1 = Player(Mancala.MenuPage.player1_name, False, True, 0)    #create player
+        self.player1 = Player(Mancala.MenuPage.player1_name, False, True)    #create player
         self.AI_name = tk.StringVar()
         self.AI_name.set("AI Bot")
-        self.player2 = Player(self.AI_name, True, False, 1) if Mancala.MenuPage.radio_button.get() == 0 else Player(Mancala.MenuPage.player2_name, False, False, 1)
+        self.player2 = Player(self.AI_name, True, False) if Mancala.MenuPage.radio_button.get() == 0 else Player(Mancala.MenuPage.player2_name, False, False)
         self.player1.opponent, self.player2.opponent = self.player2, self.player1
         self.player_list = [self.player1, self.player2]
         self.hole_list = [[None] * self.hole_num] + [[None] * self.hole_num]    #create Hole's list
@@ -292,16 +292,16 @@ class MinimaxBoard:
     def bot_move(self, row, col):
         
         seed = self.hole_list[row][col]
-        
         while seed != 0:        #while hole is not empty, distribute seed
             self.hole_list[row][col] = 0
             for i in range(seed):
-                row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+                row, col = self.next_pos(row, col)
                 self.hole_list[row][col] += 1
-            row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+                
+            row, col = self.next_pos(row, col)
             seed = self.hole_list[row][col]
 
-        row, col = self.check_pos(row, col - 1 if row == 0 else col + 1)
+        row, col = self.next_pos(row, col)
         next_hole_seed = self.hole_list[row][col]
         self.hole_list[row][col] = 0
         
@@ -311,8 +311,9 @@ class MinimaxBoard:
             self.opponent_seed += next_hole_seed
         self.is_AI_turn = not self.is_AI_turn     #players take turn
         
-    def check_pos(self, row, col):
+    def next_pos(self, row, col):
         
+        col = col - 1 if row == 0 else col + 1
         if row == 0 and col < 0:
             row, col = 1, 0
         if row == 1 and col > len(self.hole_list[row]) - 1:
